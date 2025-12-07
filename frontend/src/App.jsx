@@ -1,94 +1,105 @@
 import React, { useEffect, useState, useRef } from "react";
 import { socket } from "./api/socket";
 import MapView from "./MapView";
-import InfoPanel from "./components/InfoPanel"; 
+import InfoPanel from "./components/InfoPanel";
 import StatusBar from "./StatusBar";
 
 export default function App() {
   const [firefighters, setFirefighters] = useState({});
   const [beacons, setBeacons] = useState([]);
-  const [alerts, setAlerts] = useState([]); // <--- NOWY STAN DLA ALERTÓW
+  const [alerts, setAlerts] = useState([]); 
   const [packetCount, setPacketCount] = useState(0);
-  
+
   const [selectedId, setSelectedId] = useState(null);
   const [selectedBeaconId, setSelectedBeaconId] = useState(null);
 
-  // Funkcje wyboru (zostają bez zmian)
-  const handleSelectFirefighter = (id) => {
-    setSelectedId(id);
-    if (id) setSelectedBeaconId(null);
-  };
-  const handleSelectBeacon = (id) => {
-    setSelectedBeaconId(id);
-    if (id) setSelectedId(null);
+  // --- 1. LOGIKA DODAWANIA ALERTÓW (ZMIENIONA) ---
+  const addUniqueAlert = (newAlert) => {
+    setAlerts((prevAlerts) => {
+      // Sprawdź, czy ten strażak ma już alert TEGO SAMEGO typu
+      const exists = prevAlerts.some(
+        (a) => a.firefighter_id === newAlert.firefighter_id && a.type === newAlert.type
+      );
+
+      // JEŚLI ISTNIEJE: Ignorujemy nowy. 
+      // Dzięki temu zachowujemy timestamp PIERWSZEGO alertu.
+      if (exists) {
+        return prevAlerts;
+      }
+
+      // JEŚLI NIE ISTNIEJE: Dodajemy nowy na początek listy
+      return [newAlert, ...prevAlerts];
+    });
   };
 
-  const dismissAlert = (alertId) => {
-    setAlerts((prev) => prev.filter((a) => a.id !== alertId));
+  // --- 2. SPRAWDZANIE TELEMETRII ---
+  const checkTelemetryForAlerts = (data) => {
+    const f = data.firefighter;
+    const dev = data.device || {};
+    const scba = data.scba || {};
+    const vitals = data.vitals || {};
+
+    const checks = [
+      { condition: dev.sos_button_pressed, type: "SOS" },
+      { condition: scba.alarms?.very_low_pressure, type: "LOW_AIR" },
+      { condition: vitals.stress_level === "critical", type: "CRITICAL_VITALS" },
+      { condition: dev.battery_percent < 10, type: "LOW_BATTERY" }
+    ];
+
+    checks.forEach(check => {
+      if (check.condition) {
+        addUniqueAlert({
+          id: `${f.id}-${check.type}`, // ID oparte tylko na typie, bez daty (dla unikalności)
+          firefighter_id: f.id,
+          firefighter_name: f.name,
+          type: check.type,
+          floor: data.position?.floor || 0,
+          timestamp: new Date().toISOString() // To będzie czas PIERWSZEGO wystąpienia
+        });
+      }
+    });
   };
 
   useEffect(() => {
-    // 1. Telemetria
     socket.on("telemetry", (data) => {
       setPacketCount((p) => p + 1);
-      const id = data.firefighter.id;
-      setFirefighters((prev) => ({ ...prev, [id]: data }));
+      setFirefighters((prev) => ({ ...prev, [data.firefighter.id]: data }));
+      checkTelemetryForAlerts(data);
     });
 
-    // 2. Beacony
+    socket.on("new_alert", (serverAlert) => {
+      addUniqueAlert(serverAlert);
+    });
+
     socket.on("beacons_data", (data) => {
-      setPacketCount((p) => p + 1);
       if (data.beacons) setBeacons(data.beacons);
-    });
-
-    // 3. ALERTY (Nowość)
-    socket.on("new_alert", (alert) => {
-      // Dodajemy nowy alert na początek listy
-      setAlerts((prev) => [alert, ...prev]);
-      
-      // Opcjonalnie: Automatycznie otwórz zakładkę alertów (jeśli chcesz)
-      // Ale wymagałoby to przekazania settera do InfoPanelu lub stanu globalnego
     });
 
     return () => {
       socket.off("telemetry");
-      socket.off("beacons_data");
       socket.off("new_alert");
+      socket.off("beacons_data");
     };
   }, []);
 
-  // --- MECHANIZM CZYSZCZENIA STARYCH ALERTÓW ---
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const now = Date.now();
-      const threeMinutes = 3 * 60 * 1000;
+  // Usuwanie alertu (tylko ręczne!)
+  const dismissAlert = (id) => {
+    setAlerts((prev) => prev.filter(a => a.id !== id));
+  };
 
-      setAlerts((currentAlerts) => {
-        // Zostawiamy tylko alerty młodsze niż 3 minuty
-        return currentAlerts.filter((alert) => {
-          const alertTime = new Date(alert.timestamp).getTime();
-          return (now - alertTime) < threeMinutes;
-        });
-      });
-    }, 5000); // Sprawdzaj co 5 sekund
-
-    return () => clearInterval(interval);
-  }, []);
+  const handleSelectFirefighter = (id) => { setSelectedId(id); if (id) setSelectedBeaconId(null); };
+  const handleSelectBeacon = (id) => { setSelectedBeaconId(id); if (id) setSelectedId(null); };
 
   return (
     <div className="app-container">
-      {/* Przekazujemy liczbę aktywnych alertów do paska statusu (opcjonalnie) */}
       <StatusBar packetCount={packetCount} firefighters={firefighters} />
-      
       <div className="dashboard">
         <div className="left">
           <MapView
             firefighters={firefighters}
             beacons={beacons}
-            selectedId={selectedId}
             setSelectedId={handleSelectFirefighter}
-            selectedBeaconId={selectedBeaconId}
-            setSelectedBeaconId={handleSelectBeacon} 
+            setSelectedBeaconId={handleSelectBeacon}
           />
         </div>
         <div className="right">
@@ -96,12 +107,10 @@ export default function App() {
             firefighters={firefighters}
             beacons={beacons}
             alerts={alerts}
-            onDismissAlert={dismissAlert} // <--- PRZEKAZUJEMY FUNKCJĘ W DÓŁ
-            
+            onDismissAlert={dismissAlert}
             selectedId={selectedId}
             setSelectedId={handleSelectFirefighter}
             selectedFirefighter={selectedId ? firefighters[selectedId] : null}
-            
             selectedBeaconId={selectedBeaconId}
             setSelectedBeaconId={handleSelectBeacon}
           />

@@ -11,7 +11,6 @@ import { FaRegHeart } from "react-icons/fa";
 import { IoLocateOutline, IoWarning } from "react-icons/io5"; 
 import "../style.css";
 
-// Dodajemy prop 'activeAlerts'
 export default function FirefighterCard({ data, onSelect, isSelected, activeAlerts = [] }) {
   const f = data.firefighter;
   const v = data.vitals || {};
@@ -22,7 +21,7 @@ export default function FirefighterCard({ data, onSelect, isSelected, activeAler
   const heartRate = v.heart_rate_bpm ?? "?";
   const timeLeft = s.remaining_time_min ?? "?";
 
-  // Kolory dynamiczne
+  // --- KOLORYSTKA WIZUALNA (Tylko kolory, nie wywołują alertu!) ---
   const hrColor = heartRate > 180 ? "var(--color-critical)" : heartRate > 120 ? "var(--color-warning)" : "var(--color-ok)";
   const timeClass = timeLeft < 10 ? "critical" : timeLeft < 20 ? "warning" : "";
 
@@ -31,24 +30,14 @@ export default function FirefighterCard({ data, onSelect, isSelected, activeAler
     walking: "Chód",
     running: "Bieg",
     fallen: "Upadek",
-    climbing: "Wspina"
+    climbing: "Wspina",
+    unknown: "-"
   };
 
-  /** * 🔥 STATUS KARTY
-   * Karta jest "czerwona" (alert-active), jeśli:
-   * 1. Są aktywne alerty z bazy (SOS, Bezruch) - przekazane w activeAlerts
-   * 2. LUB parametry telemetryczne są krytyczne (tętno, bateria, ciśnienie)
-   */
-  const hasDbAlerts = activeAlerts.length > 0;
-  
-  const hasTelemetryAlarm =
-    s.alarms?.very_low_pressure ||
-    v.stress_level === "critical" ||
-    timeLeft < 10 ||
-    heartRate > 180 ||
-    d.battery_percent < 10;
-
-  const isAlertState = hasDbAlerts || hasTelemetryAlarm;
+  // --- KLUCZOWE: CZY KARTA MA ŚWIECIĆ NA CZERWONO? ---
+  // Decyduje o tym TYLKO lista z App.jsx (zbuforowane alerty)
+  // Nie ma tu żadnego "if heartRate > 180", bo to robi App.jsx
+  const isAlertState = activeAlerts && activeAlerts.length > 0;
 
   const handleLocateClick = (e) => {
     e.stopPropagation(); 
@@ -57,65 +46,80 @@ export default function FirefighterCard({ data, onSelect, isSelected, activeAler
 
   return (
     <div
-      className={`ff-mini-card ${isSelected ? "selected" : ""} ${isAlertState ? "alert-active" : ""}`}
+      className={`ff-card ${isSelected ? "selected" : ""} ${isAlertState ? "alert-active" : ""}`}
       onClick={onSelect}
     >
       {/* Nagłówek */}
-      <div className="ff-mini-head">
-        <div className="avatar">
-          <MdPerson size={24} />
+      <div className="ff-header">
+        <div style={{display:'flex', alignItems:'center'}}>
+            <div className="ff-avatar"><MdPerson /></div>
+            <div className="ff-info">
+              <h3>{f.name}</h3>
+              <p>{f.rank} · {f.role}</p>
+            </div>
         </div>
         
-        <div className="info">
-          <div className="name">{f.name}</div>
-          <div className="sub">{f.rank} · {f.role}</div>
-        </div>
-
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <div className="team">{f.team}</div>
-            <button className="locate-btn" onClick={handleLocateClick} title="Pokaż na mapie">
-                <IoLocateOutline />
-            </button>
+            <div className="ff-team">{f.team}</div>
+
         </div>
       </div>
 
-      {/* --- SEKCJA ALERTÓW Z BAZY (Widoczna tylko gdy są alerty) --- */}
-      {hasDbAlerts && (
-        <div className="card-alerts-list">
-          {activeAlerts.map(alert => (
-            <div key={alert.id} className="mini-alert-badge">
-              <IoWarning className="alert-icon-small" /> 
-              <span>{alert.type} ({new Date(alert.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})})</span>
-            </div>
-          ))}
+      {/* --- CENTRUM POWIADOMIEŃ (Tylko zdeduplikowane z App.jsx) --- */}
+      {/* --- CENTRUM POWIADOMIEŃ (Tylko zdeduplikowane z App.jsx) --- */}
+{isAlertState && (
+  <div className="card-alerts-list">
+    {activeAlerts.map((alert) => (
+      <div
+        key={alert.id}
+        className="mini-alert-badge"
+        // Dodajemy styl, aby rozsunąć elementy na boki
+        style={{ justifyContent: "space-between", width: "97.5%" }}
+      >
+        {/* LEWA STRONA: Ikona + Typ Alertu */}
+        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+          <IoWarning className="alert-icon-small" />
+          <span>{alert.type}</span>
         </div>
-      )}
 
-      {/* Siatka metryk */}
-      <div className="ff-mini-grid">
+        {/* PRAWA STRONA: Czas */}
+        <span className="alert-badge-time">
+          {new Date(alert.timestamp).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+          })}
+        </span>
+      </div>
+    ))}
+  </div>
+)}
+
+      {/* Siatka metryk (Mini Tiles) */}
+      <div className="ff-metrics-small" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', background: 'transparent' }}>
         <MiniTile icon={<FaRegHeart />} color={hrColor} label="BPM" value={heartRate} />
-        <MiniTile icon={<MdLayers />} color="var(--color-blue)" label="Piętro" value={pos.floor ?? "?"} />
+        <MiniTile icon={<MdLayers />} color="#3498db" label="Piętro" value={pos.floor ?? "?"} />
         <MiniTile
           icon={<FaBatteryHalf />}
-          color="var(--color-ok)"
+          color={d.battery_percent < 20 ? "#e74c3c" : "#2ecc71"}
           label="Bateria"
           value={`${d.battery_percent ?? "?"}%`}
         />
         <MiniTile
           icon={<MdDirectionsRun />}
-          color="var(--color-ok)"
+          color="#ecf0f1"
           label="Ruch"
-          value={moveMap[v.motion_state] ?? "-"}
+          value={moveMap[v.motion_state] || "-"}
         />
         <MiniTile
           icon={<MdOpacity />}
-          color={timeClass === "critical" ? "var(--color-critical)" : timeClass === "warning" ? "var(--color-warning)" : "var(--color-blue)"}
-          label="Powietrze"
-          value={`${s.cylinder_pressure_bar ?? "?"} bar`}
+          color={timeClass === "critical" ? "#e74c3c" : timeClass === "warning" ? "#f1c40f" : "#3498db"}
+          label="Bar"
+          value={s.cylinder_pressure_bar ?? "?"}
         />
         <MiniTile
           icon={<MdAccessTime />}
-          color={timeClass === "critical" ? "var(--color-critical)" : timeClass === "warning" ? "var(--color-warning)" : "var(--color-ok)"}
+          color={timeClass === "critical" ? "#e74c3c" : timeClass === "warning" ? "#f1c40f" : "#2ecc71"}
           label="Czas"
           value={`${timeLeft} min`}
         />
@@ -126,11 +130,9 @@ export default function FirefighterCard({ data, onSelect, isSelected, activeAler
 
 function MiniTile({ icon, label, value, color }) {
   return (
-    <div className="mini-tile">
-      <div className="tile-value" style={{ color }}>
-        {icon} {value}
-      </div>
-      <div className="tile-label">{label}</div>
+    <div style={{ background: '#222', padding: '6px', borderRadius: '4px', textAlign: 'center', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
+      <div style={{ color: color, fontSize: '0.9rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>{icon} {value}</div>
+      <div style={{ color: '#777', fontSize: '0.7rem', marginTop: '2px' }}>{label}</div>
     </div>
   );
 }

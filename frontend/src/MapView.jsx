@@ -3,6 +3,9 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "./styles.css";
 
+// Importujemy komponent 3D (upewnij się, że plik Map3D.js istnieje w tym samym folderze)
+import Map3D from "./Map3D";
+
 const GPS_ORIGIN = { lat: 52.2297, lon: 21.0122 };
 const SCALE_LAT = 111320; 
 const SCALE_LON = 71695;  
@@ -11,7 +14,6 @@ const SCALE_LON = 71695;
 const TILES = {
   satellite: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
   standard: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
-  // NOWOŚĆ: Tryb Ciemny (Dark Matter)
   dark: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
 };
 
@@ -45,7 +47,8 @@ const BUILDING_DATA = {
 export default function MapView({ 
   firefighters, 
   beacons = [], 
-  setSelectedId, 
+  setSelectedId,
+  selectedId, // Potrzebne do podświetlania w 3D
   setSelectedBeaconId 
 }) {
   const mapRef = useRef(null);
@@ -55,9 +58,12 @@ export default function MapView({
   const tileLayerRef = useRef(null);
 
   const [currentFloor, setCurrentFloor] = useState("0");
-  const [mapType, setMapType] = useState("satellite"); 
+  const [mapType, setMapType] = useState("satellite");
+  
+  // NOWY STAN: Tryb widoku (2D lub 3D)
+  const [viewMode, setViewMode] = useState("2D"); 
 
-  // --- 1. INICJALIZACJA MAPY ---
+  // --- 1. INICJALIZACJA MAPY (LEAFLET) ---
   useEffect(() => {
     if (!mapRef.current) {
       const center = localToGPS(20, 12.5);
@@ -66,13 +72,10 @@ export default function MapView({
         minZoom: 19,
         maxZoom: 22,
         zoomControl: false,
-        // Ustawiamy czarne tło kontenera, żeby przy ładowaniu nie błyskało na biało
         attributionControl: false
       }).setView(center, 21);
 
       L.control.zoom({ position: 'bottomright' }).addTo(map);
-
-      // Przenosimy atrybucję do rogu
       L.control.attribution({ position: 'bottomright' }).addTo(map);
 
       buildingLayerRef.current = L.layerGroup().addTo(map);
@@ -87,7 +90,7 @@ export default function MapView({
     };
   }, []);
 
-  // --- 2. OBSŁUGA ZMIANY PODKŁADU MAPY ---
+  // --- 2. ZMIANA PODKŁADU (2D) ---
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -97,21 +100,17 @@ export default function MapView({
     }
 
     const layerUrl = TILES[mapType];
-    const newTileLayer = L.tileLayer(layerUrl, {
-      maxZoom: 22,
-      // Dodajemy opcję 'className' jeśli chcemy filtrować CSS, ale tu wystarczy URL
-    });
+    const newTileLayer = L.tileLayer(layerUrl, { maxZoom: 22 });
 
     newTileLayer.addTo(map);
     newTileLayer.bringToBack(); 
     tileLayerRef.current = newTileLayer;
     
-    // Zmiana koloru tła kontenera mapy dla płynności
     document.getElementById('map').style.backgroundColor = mapType === 'standard' ? '#ddd' : '#111';
 
   }, [mapType]); 
 
-  // --- 3. RYSOWANIE OBIEKTÓW BUDYNKU (Style zależne od tła) ---
+  // --- 3. RYSOWANIE BUDYNKU (2D) ---
   useEffect(() => {
     if (!buildingLayerRef.current) return;
 
@@ -119,36 +118,23 @@ export default function MapView({
     const layer = buildingLayerRef.current;
     const floorData = BUILDING_DATA.floors[currentFloor];
 
-    // --- LOGIKA KOLORÓW ---
     let outlineColor, fillColor, doorTextColor;
 
     if (mapType === 'standard') {
-      // Jasna mapa: Ciemny budynek
-      outlineColor = "#2c3e50"; 
-      fillColor = "#bdc3c7";
-      doorTextColor = "#000";
+      outlineColor = "#2c3e50"; fillColor = "#bdc3c7"; doorTextColor = "#000";
     } else if (mapType === 'dark') {
-      // Ciemna mapa: Neonowy/Jasny obrys, Ciemne wypełnienie
-      outlineColor = "#5dade2"; // Jasny niebieski
-      fillColor = "#000";       // Czarne wnętrze
-      doorTextColor = "#fff";
+      outlineColor = "#5dade2"; fillColor = "#000"; doorTextColor = "#fff";
     } else {
-      // Satelita: Niebieski obrys
-      outlineColor = "#3498db";
-      fillColor = "#000";
-      doorTextColor = "#fff"; // Na satelicie lepiej biały tekst
+      outlineColor = "#3498db"; fillColor = "#000"; doorTextColor = "#fff";
     }
-    // ---------------------
 
     const outline = [
       localToGPS(0, 0), localToGPS(40, 0), localToGPS(40, 25), localToGPS(0, 25)
     ];
     
     L.polygon(outline, {
-      color: outlineColor,
-      weight: 3,
-      fillColor: fillColor,
-      fillOpacity: mapType === 'satellite' ? 0.3 : 0.5, // Na satelicie bardziej przezroczysty
+      color: outlineColor, weight: 3, fillColor: fillColor,
+      fillOpacity: mapType === 'satellite' ? 0.3 : 0.5,
       dashArray: currentFloor === "-1" ? "5, 10" : null
     }).addTo(layer);
 
@@ -158,8 +144,7 @@ export default function MapView({
         L.marker(pos, {
           icon: L.divIcon({
             className: 'entrance-marker',
-            // Dynamiczny kolor tekstu etykiety
-            html: `<div class="door-icon">🚪</div>`,
+            html: `<div class="door-icon">🚪</div><div class="door-label" style="color:${doorTextColor}">${ent.label}</div>`,
             iconSize: [30, 30], iconAnchor: [15, 15]
           })
         }).addTo(layer);
@@ -177,7 +162,7 @@ export default function MapView({
 
   }, [currentFloor, mapType]); 
 
-  // --- STRAŻACY ---
+  // --- 4. STRAŻACY (2D) ---
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -202,16 +187,14 @@ export default function MapView({
       }
 
       if (isOnCurrentFloor) {
-        markers[key].setOpacity(1); 
-        markers[key].setZIndexOffset(1000); 
+        markers[key].setOpacity(1); markers[key].setZIndexOffset(1000); 
       } else {
-        markers[key].setOpacity(0.3); 
-        markers[key].setZIndexOffset(0);
+        markers[key].setOpacity(0.3); markers[key].setZIndexOffset(0);
       }
     });
   }, [firefighters, setSelectedId, currentFloor]);
 
-  // --- BEACONY ---
+  // --- 5. BEACONY (2D) ---
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -243,49 +226,89 @@ export default function MapView({
 
   return (
     <div className="map-wrapper">
-      <div id="map" className="map-half"></div>
       
-      {/* UI KONTROLI */}
+      {/* --- MAPA 2D (Leaflet) - widoczna tylko w trybie 2D --- */}
+      <div 
+        id="map" 
+        className="map-half" 
+        style={{ display: viewMode === '2D' ? 'block' : 'none' }}
+      ></div>
+
+      {/* --- MAPA 3D (Three.js) - widoczna tylko w trybie 3D --- */}
+      {viewMode === '3D' && (
+        <div style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0, zIndex: 1 }}>
+           <Map3D 
+             firefighters={firefighters} 
+             selectedId={selectedId}
+             setSelectedId={setSelectedId}
+           />
+        </div>
+      )}
+      
+      {/* UI KONTROLI (Prawy górny róg) */}
       <div className="map-controls">
         
-        {/* Przełącznik Mapy */}
+        {/* Przełącznik TRYBU WIDOKU (Nowość) */}
         <div className="control-group">
             <button 
-              className={`map-btn ${mapType === 'satellite' ? 'active' : ''}`}
-              onClick={() => setMapType('satellite')}
+              className={`map-btn ${viewMode === '2D' ? 'active' : ''}`}
+              onClick={() => setViewMode('2D')}
             >
-              🛰️ Satelita
+              🗺️ 2D
             </button>
             <button 
-              className={`map-btn ${mapType === 'standard' ? 'active' : ''}`}
-              onClick={() => setMapType('standard')}
+              className={`map-btn ${viewMode === '3D' ? 'active' : ''}`}
+              onClick={() => setViewMode('3D')}
             >
-              🗺️ Jasna
-            </button>
-            <button 
-              className={`map-btn ${mapType === 'dark' ? 'active' : ''}`}
-              onClick={() => setMapType('dark')}
-              style={{color: mapType==='dark' ? '#fff' : '#aaa'}}
-            >
-              🌑 Ciemna
+              🧊 3D
             </button>
         </div>
 
         <div className="control-divider"></div>
 
-        {/* Wybór Piętra */}
-        <div className="control-group floor-group">
-          <div className="floor-label">PIĘTRO</div>
-          {Object.keys(BUILDING_DATA.floors).sort((a,b) => b-a).map(floor => (
-            <button 
-              key={floor}
-              className={`floor-btn ${currentFloor === floor ? 'active' : ''}`}
-              onClick={() => setCurrentFloor(floor)}
-            >
-              {floor}
-            </button>
-          ))}
-        </div>
+        {/* --- OPCJE TYLKO DLA 2D --- */}
+        {viewMode === '2D' && (
+          <>
+            {/* Przełącznik Mapy (Satelita/Jasna/Ciemna) */}
+            <div className="control-group">
+                <button 
+                  className={`map-btn ${mapType === 'satellite' ? 'active' : ''}`}
+                  onClick={() => setMapType('satellite')}
+                >
+                  🛰️ Satelita
+                </button>
+                <button 
+                  className={`map-btn ${mapType === 'standard' ? 'active' : ''}`}
+                  onClick={() => setMapType('standard')}
+                >
+                  🗺️ Jasna
+                </button>
+                <button 
+                  className={`map-btn ${mapType === 'dark' ? 'active' : ''}`}
+                  onClick={() => setMapType('dark')}
+                  style={{color: mapType==='dark' ? '#fff' : '#aaa'}}
+                >
+                  🌑 Ciemna
+                </button>
+            </div>
+
+            <div className="control-divider"></div>
+
+            {/* Wybór Piętra */}
+            <div className="control-group floor-group">
+              <div className="floor-label">PIĘTRO</div>
+              {Object.keys(BUILDING_DATA.floors).sort((a,b) => b-a).map(floor => (
+                <button 
+                  key={floor}
+                  className={`floor-btn ${currentFloor === floor ? 'active' : ''}`}
+                  onClick={() => setCurrentFloor(floor)}
+                >
+                  {floor}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

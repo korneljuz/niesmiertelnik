@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import "../../styles.css";
-import MetricBig from "./MetricBig";
+import MetricBig from "./MetricBig"; // Upewnij się, że masz ten plik
 import { Line } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -13,8 +13,10 @@ import {
   Legend,
 } from "chart.js";
 
+// Rejestracja komponentów wykresu
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Filler, Tooltip, Legend);
 
+// --- SŁOWNIKI TŁUMACZEŃ ---
 const MAP = {
   motion: {
     walking: "Chód",
@@ -49,6 +51,7 @@ const MAP = {
 
 const t = (category, key) => (MAP[category] && MAP[category][key]) ? MAP[category][key] : (key || "-");
 
+// --- KOMPONENT ZWIJANEJ SEKCJI ---
 const CollapsibleSection = ({ title, isOpen, onToggle, badges = [], children, hasCritical = false }) => {
   return (
     <div className="collapsible-wrapper">
@@ -70,7 +73,9 @@ const CollapsibleSection = ({ title, isOpen, onToggle, badges = [], children, ha
   );
 };
 
-export default function FirefighterDetail({ data, onBack }) {
+// --- GŁÓWNY KOMPONENT ---
+// Dodano prop 'activeAlerts'
+export default function FirefighterDetail({ data, onBack, activeAlerts = [] }) {
   const f = data.firefighter || {};
   const v = data.vitals || {};
   const s = data.scba || {};
@@ -83,9 +88,10 @@ export default function FirefighterDetail({ data, onBack }) {
   const box = data.black_box || {};
   const letter = f.name ? f.name.charAt(0).toUpperCase() : "?";
 
+  // --- Stan sekcji (Zwijanie/Rozwijanie) ---
   const [sections, setSections] = useState({
-    vitals: true,   // Parametry życiowe na górze - otwarte
-    alerts: true,   // Alerty pod spodem - otwarte
+    vitals: true,
+    alerts: true,
     chart: true,
     position: true,
     sensors: false,
@@ -94,28 +100,33 @@ export default function FirefighterDetail({ data, onBack }) {
 
   const toggleSection = (key) => setSections((prev) => ({ ...prev, [key]: !prev[key] }));
 
-  // --- Logika Alertów ---
-  const [alertHistory, setAlertHistory] = useState([]);
+  // --- LOGIKA WYŚWIETLANIA ALERTÓW ---
   const [filter, setFilter] = useState("all");
 
-  useEffect(() => {
-    const now = new Date().toLocaleTimeString();
-    const alerts = [];
-
-    if (s.alarms?.very_low_pressure) alerts.push({ level: "critical", text: "Krytyczne ciśnienie SCBA!", time: now });
-    else if (s.alarms?.low_pressure) alerts.push({ level: "warning", text: "Niskie ciśnienie SCBA", time: now });
-    
-    if (pass.alarm_active) alerts.push({ level: "critical", text: "PASS: Wykryto bezruch (ALARM)", time: now });
-    if (v.stress_level === "critical") alerts.push({ level: "critical", text: "Krytyczny poziom stresu", time: now });
-    if (d.sos_button_pressed) alerts.push({ level: "critical", text: "Wezwano SOS!", time: now });
-    if (d.battery_percent < 20) alerts.push({ level: "warning", text: "Niski poziom baterii", time: now });
-
-    if (alerts.length > 0) {
-      setAlertHistory((prev) => [...alerts, ...prev].slice(0, 15));
+  // Helper do mapowania typu alertu na czytelny tekst i poziom
+  const getAlertInfo = (type) => {
+    switch (type) {
+      case "SOS": return { label: "WEZWANO POMOC (SOS)", level: "critical" };
+      case "LOW_AIR": return { label: "Krytyczne ciśnienie", level: "critical" };
+      case "CRITICAL_VITALS": return { label: "Krytyczne parametry życiowe", level: "critical" };
+      case "NO_MOVEMENT": return { label: "Wykryto bezruch (>30s)", level: "critical" };
+      case "LOW_BATTERY": return { label: "Niski poziom baterii", level: "warning" };
+      default: return { label: `Zdarzenie: ${type}`, level: "warning" };
     }
-  }, [s.alarms, pass.alarm_active, v.stress_level, d.sos_button_pressed, d.battery_percent]);
+  };
 
-  // --- Wykres HR ---
+  // Filtrowanie alertów (na podstawie activeAlerts z App.jsx)
+  const filteredAlerts = activeAlerts.filter(alert => {
+    const info = getAlertInfo(alert.type);
+    if (filter === "all") return true;
+    if (filter === "critical") return info.level === "critical";
+    if (filter === "warning") return info.level === "warning";
+    return true;
+  });
+
+  const hasCriticalAlerts = activeAlerts.some(a => getAlertInfo(a.type).level === "critical");
+
+  // --- WYKRES HR ---
   const [hrHistory, setHrHistory] = useState([]);
   useEffect(() => {
     if (v.heart_rate_bpm != null) setHrHistory((prev) => [...prev, v.heart_rate_bpm].slice(-20));
@@ -127,13 +138,12 @@ export default function FirefighterDetail({ data, onBack }) {
       {
         label: "BPM",
         data: hrHistory,
-        borderColor: "#37f58c", // Jaskrawy zielony medyczny
-        backgroundColor: "rgba(55, 245, 140, 0.1)", // Lekkie wypełnienie pod wykresem
+        borderColor: "#37f58c",
+        backgroundColor: "rgba(55, 245, 140, 0.1)",
         borderWidth: 2,
-        pointRadius: 0, // Ukrywamy punkty, żeby była ciągła linia
-        pointHoverRadius: 4,
-        tension: 0.2, // Lekko kanciasta linia (bardziej techniczny wygląd)
-        fill: true,   // Wypełnienie obszaru pod wykresem (opcjonalne)
+        pointRadius: 0,
+        tension: 0.2,
+        fill: true,
       },
     ],
   };
@@ -141,55 +151,24 @@ export default function FirefighterDetail({ data, onBack }) {
   const hrOptions = {
     responsive: true,
     maintainAspectRatio: false,
-    animation: {
-      duration: 0 // Wyłączamy animację wchodzenia, aby wyglądało na "real-time"
-    },
-    interaction: {
-      mode: 'index',
-      intersect: false,
-    },
+    animation: { duration: 0 },
     scales: {
-      x: {
-        display: false,
-      },
+      x: { display: false },
       y: {
-        min: 40,
-        max: 200,
-        grid: {
-          color: "rgba(55, 245, 140, 0.15)",
-          lineWidth: 1,
-        },
+        min: 40, max: 200,
+        grid: { color: "rgba(55, 245, 140, 0.15)" },
         border: { display: false },
-        ticks: {
-          color: "#37f58c", // Zielone cyfry
-          font: { family: "monospace", size: 10 },
-          stepSize: 40,
-          callback: function(value) { return value + ' ❤'; } // Dodatek serduszka przy osi
-        },
+        ticks: { color: "#37f58c", stepSize: 40 },
       },
     },
-    plugins: {
-      legend: { display: false },
-      tooltip: {
-        enabled: true,
-        backgroundColor: "rgba(0, 0, 0, 0.8)",
-        titleColor: "#37f58c",
-        bodyColor: "#eee",
-        borderColor: "#37f58c",
-        borderWidth: 1,
-        displayColors: false,
-        callbacks: {
-            label: (context) => `Tętno: ${context.raw} BPM`
-        }
-      },
-    },
+    plugins: { legend: { display: false } },
   };
 
-  // --- Kolory i Klasy (Logika podświetlania) ---
+  // --- LOGIKA KOLORÓW KAFELKÓW (Wizualna) ---
   const getScbaStatus = () => {
     if (s.alarms?.very_low_pressure) return "metric-critical";
     if (s.alarms?.low_pressure) return "metric-warning";
-    return ""; // Domyślny
+    return "";
   };
 
   const getPassClass = () => {
@@ -203,9 +182,6 @@ export default function FirefighterDetail({ data, onBack }) {
       if (v.stress_level === "high") return "metric-warning";
       return "";
   };
-
-  const filteredAlerts = filter === "all" ? alertHistory : alertHistory.filter(a => filter === "critical" ? a.level === "critical" : a.level === "warning");
-  const hasCriticalAlerts = alertHistory.some(a => a.level === "critical");
 
   return (
     <div className="ff-detail">
@@ -226,7 +202,7 @@ export default function FirefighterDetail({ data, onBack }) {
         </div>
       </div>
 
-      {/* --- SEKCJA 1: PARAMETRY ŻYCIOWE i SCBA (Teraz na górze) --- */}
+      {/* --- SEKCJA 1: PARAMETRY ŻYCIOWE i SCBA --- */}
       <CollapsibleSection 
         title="Parametry"
         isOpen={sections.vitals} 
@@ -234,68 +210,65 @@ export default function FirefighterDetail({ data, onBack }) {
         badges={v.stress_level === 'critical' ? [{text: 'STRES!', type: 'critical'}] : []}
       >
         <div className="ff-stats-grid">
-          {/* Tętno - kolorowanie tekstu przez klasę CSS metric-critical/warning */}
           <MetricBig 
             label="Tętno" 
             value={`${v.heart_rate_bpm ?? "?"} bpm`} 
             customClass={getStressClass()} 
           />
-          
           <MetricBig label="Strefa HR" value={t('hr_zone', v.hr_zone)} />
-          
           <MetricBig 
             label="Stres" 
             value={v.stress_level === 'critical' ? 'KRYTYCZNY' : (v.stress_level === 'high' ? 'WYSOKI' : 'Norma')} 
             customClass={getStressClass()} 
           />
-
-          {/* SCBA - Klasa zmienia kolor ramki I tekstu */}
           <MetricBig 
             label="Ciśnienie SCBA" 
             value={`${s.cylinder_pressure_bar ?? "?"} bar`} 
             customClass={getScbaStatus()} 
           />
-          
           <MetricBig 
             label="Czas pracy" 
             value={`${s.remaining_time_min ?? "?"} min`}
             customClass={s.remaining_time_min < 10 ? (s.remaining_time_min < 5 ? 'metric-critical' : 'metric-warning') : ''}
           />
-          
           <MetricBig label="Zużycie" value={`${s.consumption_rate_lpm ?? "?"} L/min`} />
-
           <MetricBig 
             label="PASS Status" 
             value={t('pass', pass.status)} 
             customClass={getPassClass()} 
           />
-          
           <MetricBig label="Ruch" value={t('motion', v.motion_state)} />
           <MetricBig label="Temp. skóry" value={`${v.skin_temperature_c ?? "?"}°C`} />
         </div>
       </CollapsibleSection>
 
-      {/* --- SEKCJA 2: CENTRUM POWIADOMIEŃ (Teraz jako drugie) --- */}
+      {/* --- SEKCJA 2: CENTRUM POWIADOMIEŃ (ZBUFOROWANE ALERTY) --- */}
       <CollapsibleSection 
         title="Centrum Powiadomień" 
         isOpen={sections.alerts} 
         onToggle={() => toggleSection('alerts')}
         hasCritical={hasCriticalAlerts}
-        badges={[{ text: `${alertHistory.length}`, type: hasCriticalAlerts ? 'critical' : 'neutral' }]}
+        badges={[{ text: `${activeAlerts.length}`, type: hasCriticalAlerts ? 'critical' : 'neutral' }]}
       >
         <div className="alert-filters">
            <button className={filter === "all" ? "active" : ""} onClick={() => setFilter("all")}>Wszystkie</button>
            <button className={filter === "warning" ? "active" : ""} onClick={() => setFilter("warning")}>Ostrzeżenia</button>
            <button className={filter === "critical" ? "active" : ""} onClick={() => setFilter("critical")}>Krytyczne</button>
         </div>
+        
         <div className="ff-alert-list">
-          {filteredAlerts.length === 0 ? <p className="no-alerts">Brak nowych alertów</p> : 
-            filteredAlerts.map((a, i) => (
-              <div key={i} className={`alert-item alert-${a.level}`}>
-                <span className="alert-time">{a.time}</span>
-                <span className="alert-text">{a.text}</span>
-              </div>
-            ))
+          {filteredAlerts.length === 0 ? <p className="no-alerts">Brak aktywnych alertów</p> : 
+            filteredAlerts.map((alert) => {
+              const info = getAlertInfo(alert.type);
+              const timeString = new Date(alert.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second: '2-digit'});
+              
+              return (
+                <div key={alert.id} className={`alert-item alert-${info.level}`}>
+                  <span className="alert-time">{timeString}</span>
+                  <span className="alert-text">{info.label}</span>
+                </div>
+              );
+            })
           }
         </div>
       </CollapsibleSection>
@@ -304,16 +277,8 @@ export default function FirefighterDetail({ data, onBack }) {
       <CollapsibleSection title="Monitoring Pracy Serca" isOpen={sections.chart} onToggle={() => toggleSection('chart')}>
         <div className="medical-chart-wrapper">
           <div className="medical-background"></div>
-          {/* <div className="scan-line"></div>  <-- Opcjonalnie: odkomentuj dla efektu skanera */}
           <div className="medical-chart-canvas" style={{ height: '120px' }}>
             <Line data={hrData} options={hrOptions} />
-          </div>
-          <div style={{
-              position: 'absolute', top: 10, right: 15, 
-              color: '#37f58c', fontFamily: 'monospace', fontSize: '0.7rem',
-              opacity: 0.7
-          }}>
-              Tętno // 25mm/s
           </div>
         </div>
       </CollapsibleSection>
@@ -328,39 +293,23 @@ export default function FirefighterDetail({ data, onBack }) {
         <div className="ff-stats-grid">
           <MetricBig label="Piętro (Est)" value={pos.floor ?? "0"} />
           <MetricBig label="Dokładność" value={`±${pos.accuracy_m ?? "?"}m`} />
-          <MetricBig label="Źródło" value={pos.source === 'uwb_fusion' ? 'UWB+IMU' : pos.source} />
-          
           <MetricBig label="GPS Sat" value={pos.gps?.satellites ?? 0} />
           <MetricBig label="Kierunek" value={`${data.heading_deg ?? 0}°`} />
-          <MetricBig label="Dryf" value={`${pos.drift?.drift_total_m ?? 0} m`} />
-        </div>
-        
-        {/* Szczegóły UWB */}
-        <div className="ff-extra" style={{marginTop: 10, padding: 10, background: '#222', borderRadius: 8}}>
-            <small style={{color: '#888', display: 'block', marginBottom: 5}}>Widoczne kotwice UWB:</small>
-            <div style={{display: 'flex', flexWrap: 'wrap', gap: 6}}>
-                {data.uwb_measurements?.map((m, i) => (
-                    <span key={i} style={{fontSize: '0.8rem', background: '#333', padding: '3px 8px', borderRadius: 4, color: '#aaa'}}>
-                        {m.beacon_name || m.beacon_id} <span style={{color: '#37f58c'}}>({m.range_m}m)</span>
-                    </span>
-                ))}
-            </div>
+          <MetricBig label="Pos X" value={pos.x ?? "?"} />
+          <MetricBig label="Pos Y" value={pos.y ?? "?"} />
         </div>
       </CollapsibleSection>
 
-      {/* --- SEKCJA 5: SENSORY FIZYCZNE --- */}
+      {/* --- SEKCJA 5: SENSORY --- */}
       <CollapsibleSection title="Środowisko i Sensory" isOpen={sections.sensors} onToggle={() => toggleSection('sensors')}>
         <div className="ff-stats-grid">
           <MetricBig label="Ciśnienie Atm." value={`${(baro.pressure_pa / 100).toFixed(1)} hPa`} />
           <MetricBig label="Temp. Otoczenia" value={`${baro.temperature_c ?? "?"}°C`} />
           <MetricBig label="Wysokość Rel." value={`${baro.altitude_rel_m ?? "?"} m`} />
-          <MetricBig label="Pochył (Pitch)" value={`${imu.orientation?.pitch ?? 0}°`} />
-          <MetricBig label="Przechył (Roll)" value={`${imu.orientation?.roll ?? 0}°`} />
-          <MetricBig label="Prędkość Pion." value={`${baro.vertical_speed_mps ?? 0} m/s`} />
         </div>
       </CollapsibleSection>
 
-       {/* --- SEKCJA 6: DIAGNOSTYKA --- */}
+       {/* --- SEKCJA 6: URZĄDZENIE --- */}
        <CollapsibleSection title="Urządzenie" isOpen={sections.device} onToggle={() => toggleSection('device')}>
         <div className="ff-stats-grid">
           <MetricBig 
@@ -368,24 +317,9 @@ export default function FirefighterDetail({ data, onBack }) {
             value={`${d.battery_percent ?? "?"}%`} 
             customClass={d.battery_percent < 20 ? 'metric-warning' : ''} 
           />
-          <MetricBig label="Bateria SCBA" value={`${s.battery_percent ?? "?"}%`} />
           <MetricBig label="LoRa RSSI" value={`${d.lora_rssi_dbm ?? "?"} dBm`} />
-          <MetricBig label="Czarna Skrzynia" value={box.recording ? "Nagrywa" : "Stop"} />
-          <MetricBig label="Pamięć BB" value={`${box.storage_used_percent ?? 0}%`} />
-          <MetricBig label="Firmware" value={d.firmware_version ?? "?"} />
         </div>
       </CollapsibleSection>
-
-      {/* RECCO Status */}
-      {recco.detected && (
-        <div style={{
-            marginTop: 16, padding: 12, borderRadius: 6, 
-            background: 'rgba(55, 245, 140, 0.2)', border: '1px solid #37f58c',
-            textAlign: 'center', fontSize: '1rem', fontWeight: 'bold', color: '#37f58c'
-        }}>
-            ⚠️ RECCO: Wykryto sygnał [{recco.location}]
-        </div>
-      )}
 
     </div>
   );
