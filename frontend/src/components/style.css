@@ -705,7 +705,7 @@
 /* --- ZMODYFIKOWANA KARTA ALERTU --- */
 .alert-card {
   display: flex;
-  align-items: center; /* Wyśrodkowanie w pionie */
+  align-items: center;
   background-color: #3e1b1b;
   border: 1px solid #e74c3c;
   border-left: 6px solid #e74c3c;

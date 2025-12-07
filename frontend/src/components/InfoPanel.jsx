@@ -20,13 +20,11 @@ export default function InfoPanel({
 }) {
   const [activeTab, setActiveTab] = useState("strazacy");
   
-  // --- STANY FILTRÓW (STRAŻACY) ---
   const [searchText, setSearchText] = useState("");
   const [filterTeam, setFilterTeam] = useState("all");
   const [sortBy, setSortBy] = useState("id"); 
 
-  // --- STAN SORTOWANIA (ALERTY) - NOWOŚĆ ---
-  const [alertSort, setAlertSort] = useState("priority"); // 'priority' lub 'time'
+  const [alertSort, setAlertSort] = useState("priority");
 
   useEffect(() => { if (selectedId) setActiveTab("strazacy"); }, [selectedId]);
   useEffect(() => { if (selectedBeaconId) setActiveTab("beacons"); }, [selectedBeaconId]);
@@ -34,7 +32,6 @@ export default function InfoPanel({
   const listFirefighters = Object.values(firefighters);
   const listBeacons = beacons || [];
 
-  // --- LOGIKA FILTROWANIA STRAŻAKÓW ---
   const filteredFirefighters = useMemo(() => {
     let result = listFirefighters;
     if (searchText) {
@@ -58,7 +55,6 @@ export default function InfoPanel({
 
   const uniqueTeams = [...new Set(listFirefighters.map(f => f.firefighter.team))];
 
-  // --- PRIORYTETY ALERTÓW ---
   const getAlertPriority = (type) => {
     switch (type) {
       case "SOS": return 100;
@@ -132,24 +128,19 @@ export default function InfoPanel({
       case "alerty":
          if (!alerts || alerts.length === 0) return <div className="empty-state"><p>Brak aktywnych zagrożeń.</p></div>;
          
-         // --- LOGIKA SORTOWANIA ALERTÓW ---
          const sortedAlerts = [...alerts].sort((a, b) => {
             if (alertSort === "priority") {
-                // Najpierw waga problemu (SOS > Bateria)
                 const pA = getAlertPriority(a.type);
                 const pB = getAlertPriority(b.type);
                 if (pA !== pB) return pB - pA;
-                // Jeśli waga ta sama, to nowsze wyżej
                 return new Date(b.timestamp) - new Date(a.timestamp);
             } else {
-                // Tylko czas (Najnowsze na górze)
                 return new Date(b.timestamp) - new Date(a.timestamp);
             }
          });
 
          return (
           <>
-            {/* --- PASEK SORTOWANIA ALERTÓW (NOWOŚĆ) --- */}
             <div className="alert-sort-bar">
                 <span className="sort-label">Sortuj:</span>
                 <button 

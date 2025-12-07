@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import "../../styles.css";
-import MetricBig from "./MetricBig"; // Upewnij się, że masz ten plik
+import MetricBig from "./MetricBig";
 import { Line } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -13,10 +13,8 @@ import {
   Legend,
 } from "chart.js";
 
-// Rejestracja komponentów wykresu
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Filler, Tooltip, Legend);
 
-// --- SŁOWNIKI TŁUMACZEŃ ---
 const MAP = {
   motion: {
     walking: "Chód",
@@ -51,7 +49,6 @@ const MAP = {
 
 const t = (category, key) => (MAP[category] && MAP[category][key]) ? MAP[category][key] : (key || "-");
 
-// --- KOMPONENT ZWIJANEJ SEKCJI ---
 const CollapsibleSection = ({ title, isOpen, onToggle, badges = [], children, hasCritical = false }) => {
   return (
     <div className="collapsible-wrapper">
@@ -73,8 +70,6 @@ const CollapsibleSection = ({ title, isOpen, onToggle, badges = [], children, ha
   );
 };
 
-// --- GŁÓWNY KOMPONENT ---
-// Dodano prop 'activeAlerts'
 export default function FirefighterDetail({ data, onBack, activeAlerts = [] }) {
   const f = data.firefighter || {};
   const v = data.vitals || {};
@@ -88,7 +83,6 @@ export default function FirefighterDetail({ data, onBack, activeAlerts = [] }) {
   const box = data.black_box || {};
   const letter = f.name ? f.name.charAt(0).toUpperCase() : "?";
 
-  // --- Stan sekcji (Zwijanie/Rozwijanie) ---
   const [sections, setSections] = useState({
     vitals: true,
     alerts: true,
@@ -100,10 +94,8 @@ export default function FirefighterDetail({ data, onBack, activeAlerts = [] }) {
 
   const toggleSection = (key) => setSections((prev) => ({ ...prev, [key]: !prev[key] }));
 
-  // --- LOGIKA WYŚWIETLANIA ALERTÓW ---
   const [filter, setFilter] = useState("all");
 
-  // Helper do mapowania typu alertu na czytelny tekst i poziom
   const getAlertInfo = (type) => {
     switch (type) {
       case "SOS": return { label: "WEZWANO POMOC (SOS)", level: "critical" };
@@ -115,7 +107,6 @@ export default function FirefighterDetail({ data, onBack, activeAlerts = [] }) {
     }
   };
 
-  // Filtrowanie alertów (na podstawie activeAlerts z App.jsx)
   const filteredAlerts = activeAlerts.filter(alert => {
     const info = getAlertInfo(alert.type);
     if (filter === "all") return true;
@@ -126,7 +117,6 @@ export default function FirefighterDetail({ data, onBack, activeAlerts = [] }) {
 
   const hasCriticalAlerts = activeAlerts.some(a => getAlertInfo(a.type).level === "critical");
 
-  // --- WYKRES HR ---
   const [hrHistory, setHrHistory] = useState([]);
   useEffect(() => {
     if (v.heart_rate_bpm != null) setHrHistory((prev) => [...prev, v.heart_rate_bpm].slice(-20));
@@ -164,7 +154,6 @@ export default function FirefighterDetail({ data, onBack, activeAlerts = [] }) {
     plugins: { legend: { display: false } },
   };
 
-  // --- LOGIKA KOLORÓW KAFELKÓW (Wizualna) ---
   const getScbaStatus = () => {
     if (s.alarms?.very_low_pressure) return "metric-critical";
     if (s.alarms?.low_pressure) return "metric-warning";
@@ -242,7 +231,7 @@ export default function FirefighterDetail({ data, onBack, activeAlerts = [] }) {
         </div>
       </CollapsibleSection>
 
-      {/* --- SEKCJA 2: CENTRUM POWIADOMIEŃ (ZBUFOROWANE ALERTY) --- */}
+      {/* --- SEKCJA 2: CENTRUM POWIADOMIEŃ --- */}
       <CollapsibleSection 
         title="Centrum Powiadomień" 
         isOpen={sections.alerts} 

@@ -14,7 +14,6 @@ export default function BeaconCard({ data, onClick }) {
       </div>
 
       <div className="compact-right">
-        {/* Przywrócony wskaźnik statusu */}
         <div className={`status-indicator list-ver ${data.status}`}>
           <span className="status-dot"></span>
           {isOnline ? "ONLINE" : "OFFLINE"}

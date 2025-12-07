@@ -21,7 +21,6 @@ export default function FirefighterCard({ data, onSelect, isSelected, activeAler
   const heartRate = v.heart_rate_bpm ?? "?";
   const timeLeft = s.remaining_time_min ?? "?";
 
-  // --- KOLORYSTKA WIZUALNA (Tylko kolory, nie wywołują alertu!) ---
   const hrColor = heartRate > 180 ? "var(--color-critical)" : heartRate > 120 ? "var(--color-warning)" : "var(--color-ok)";
   const timeClass = timeLeft < 10 ? "critical" : timeLeft < 20 ? "warning" : "";
 
@@ -34,9 +33,6 @@ export default function FirefighterCard({ data, onSelect, isSelected, activeAler
     unknown: "-"
   };
 
-  // --- KLUCZOWE: CZY KARTA MA ŚWIECIĆ NA CZERWONO? ---
-  // Decyduje o tym TYLKO lista z App.jsx (zbuforowane alerty)
-  // Nie ma tu żadnego "if heartRate > 180", bo to robi App.jsx
   const isAlertState = activeAlerts && activeAlerts.length > 0;
 
   const handleLocateClick = (e) => {
@@ -49,7 +45,6 @@ export default function FirefighterCard({ data, onSelect, isSelected, activeAler
       className={`ff-card ${isSelected ? "selected" : ""} ${isAlertState ? "alert-active" : ""}`}
       onClick={onSelect}
     >
-      {/* Nagłówek */}
       <div className="ff-header">
         <div style={{display:'flex', alignItems:'center'}}>
             <div className="ff-avatar"><MdPerson /></div>
@@ -65,24 +60,19 @@ export default function FirefighterCard({ data, onSelect, isSelected, activeAler
         </div>
       </div>
 
-      {/* --- CENTRUM POWIADOMIEŃ (Tylko zdeduplikowane z App.jsx) --- */}
-      {/* --- CENTRUM POWIADOMIEŃ (Tylko zdeduplikowane z App.jsx) --- */}
 {isAlertState && (
   <div className="card-alerts-list">
     {activeAlerts.map((alert) => (
       <div
         key={alert.id}
         className="mini-alert-badge"
-        // Dodajemy styl, aby rozsunąć elementy na boki
         style={{ justifyContent: "space-between", width: "97.5%" }}
       >
-        {/* LEWA STRONA: Ikona + Typ Alertu */}
         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
           <IoWarning className="alert-icon-small" />
           <span>{alert.type}</span>
         </div>
 
-        {/* PRAWA STRONA: Czas */}
         <span className="alert-badge-time">
           {new Date(alert.timestamp).toLocaleTimeString([], {
             hour: "2-digit",
@@ -95,7 +85,6 @@ export default function FirefighterCard({ data, onSelect, isSelected, activeAler
   </div>
 )}
 
-      {/* Siatka metryk (Mini Tiles) */}
       <div className="ff-metrics-small" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', background: 'transparent' }}>
         <MiniTile icon={<FaRegHeart />} color={hrColor} label="BPM" value={heartRate} />
         <MiniTile icon={<MdLayers />} color="#3498db" label="Piętro" value={pos.floor ?? "?"} />

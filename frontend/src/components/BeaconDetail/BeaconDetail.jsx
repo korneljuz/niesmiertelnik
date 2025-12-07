@@ -13,13 +13,11 @@ export default function BeaconDetail({ data, onBack }) {
 
   return (
     <div className="beacon-detail-view">
-      {/* Przycisk powrotu */}
       <button className="btn-back" onClick={onBack}>
         ← Powrót
       </button>
 
       <div className={`beacon-card detail ${!isOnline ? "offline" : ""}`}>
-        {/* NAGŁÓWEK */}
         <div className="beacon-header">
           <div className="beacon-identity">
             <span className="beacon-type">{data.type === 'entry' ? '🚪 WEJŚCIE' : '📍 PUNKT'}</span>
@@ -35,7 +33,6 @@ export default function BeaconDetail({ data, onBack }) {
           </div>
         </div>
 
-        {/* INFO BATERIA */}
         <div className="beacon-info-row">
           <span className="info-label">Bateria:</span>
           <span className="info-value" style={{ color: batteryColor, fontWeight: "bold" }}>
@@ -43,7 +40,6 @@ export default function BeaconDetail({ data, onBack }) {
           </span>
         </div>
 
-        {/* SIATKA PARAMETRÓW */}
         <div className="beacon-stats-grid">
           <div className="stat-box">
             <span className="stat-label">Pozycja</span>
@@ -65,7 +61,6 @@ export default function BeaconDetail({ data, onBack }) {
           </div>
         </div>
 
-        {/* LISTA TAGÓW */}
         <div className="beacon-tags-section">
           <div className="section-title">
             W ZASIĘGU ({data.detected_tags.length})
@@ -87,7 +82,6 @@ export default function BeaconDetail({ data, onBack }) {
           )}
         </div>
 
-        {/* STOPKA */}
         <div className="beacon-footer">
           FW: {data.firmware_version} • HW: {data.hardware_version} • Err: {data.error_count}
         </div>
