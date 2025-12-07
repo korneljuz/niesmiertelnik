@@ -52,11 +52,10 @@ W nowym oknie terminala przejdź do folderu aplikacji i zainstaluj pakiety NPM:
 
 ```bash
 cd frontend
-npm install
-# Instalacja kluczowych bibliotek
 npm install three @react-three/fiber @react-three/drei leaflet react-leaflet chart.js react-chartjs-2 socket.io-client react-icons
-Uruchom wersję deweloperską:
 ```
+
+Uruchom wersję deweloperską:
 
 ```bash
 npm run dev
