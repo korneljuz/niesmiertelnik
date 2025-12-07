@@ -1,6 +1,7 @@
 ## 1.Schemat blokowy
-Bramka NIB (Network-in-the-Box) to mobilne centrum komunikacyjno-obliczeniowe klasy przemysłowej. Pełni rolę serwera krawędziowego (Edge Computing), zbierając dane od ratowników i udostępniając lokalną sieć dowodzenia (WiFi Hotspot) na miejscu akcji.
-![[diagram-export-7.12.2025-00_19_11.png]]
+
+#### Bramka NIB (Network-in-the-Box) to mobilne centrum komunikacyjno-obliczeniowe klasy przemysłowej. Pełni rolę serwera krawędziowego (Edge Computing), zbierając dane od ratowników i udostępniając lokalną sieć dowodzenia (WiFi Hotspot) na miejscu akcji.
+![schemat blokowy bramki NIB](bramka_nib_schemat.png)
 ---
 ### 2. Lista Materiałowa (BOM) – NIB v4.6
 
