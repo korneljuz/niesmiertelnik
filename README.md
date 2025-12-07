@@ -16,6 +16,7 @@
     * Obsługa przycisku SOS.
     * System deduplikacji powiadomień ("Sticky Alerts") – alert znika dopiero po zatwierdzeniu.
 * **Centrum Powiadomień:** Sortowanie alertów według priorytetu (zagrożenie życia > sprzęt) i czasu wystąpienia.
+* [Algorytm lokalizacji strażaków](algorithm/README.md)
 
 ## 🛠️ Tech Stack
 
