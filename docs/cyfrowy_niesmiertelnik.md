@@ -1,5 +1,5 @@
 ---
-
+Cyfrowy Nieśmiertelnik
 ---
 ## Schemat blokowy 
 ![schemat blokowy niesmiertelnika](niesmiertelnik.jpg)
