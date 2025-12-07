@@ -13,26 +13,20 @@ export default function App() {
   const [selectedId, setSelectedId] = useState(null);
   const [selectedBeaconId, setSelectedBeaconId] = useState(null);
 
-  // --- 1. LOGIKA DODAWANIA ALERTÓW (ZMIENIONA) ---
   const addUniqueAlert = (newAlert) => {
     setAlerts((prevAlerts) => {
-      // Sprawdź, czy ten strażak ma już alert TEGO SAMEGO typu
       const exists = prevAlerts.some(
         (a) => a.firefighter_id === newAlert.firefighter_id && a.type === newAlert.type
       );
 
-      // JEŚLI ISTNIEJE: Ignorujemy nowy. 
-      // Dzięki temu zachowujemy timestamp PIERWSZEGO alertu.
       if (exists) {
         return prevAlerts;
       }
 
-      // JEŚLI NIE ISTNIEJE: Dodajemy nowy na początek listy
       return [newAlert, ...prevAlerts];
     });
   };
 
-  // --- 2. SPRAWDZANIE TELEMETRII ---
   const checkTelemetryForAlerts = (data) => {
     const f = data.firefighter;
     const dev = data.device || {};
@@ -49,12 +43,12 @@ export default function App() {
     checks.forEach(check => {
       if (check.condition) {
         addUniqueAlert({
-          id: `${f.id}-${check.type}`, // ID oparte tylko na typie, bez daty (dla unikalności)
+          id: `${f.id}-${check.type}`, 
           firefighter_id: f.id,
           firefighter_name: f.name,
           type: check.type,
           floor: data.position?.floor || 0,
-          timestamp: new Date().toISOString() // To będzie czas PIERWSZEGO wystąpienia
+          timestamp: new Date().toISOString()
         });
       }
     });
@@ -82,7 +76,6 @@ export default function App() {
     };
   }, []);
 
-  // Usuwanie alertu (tylko ręczne!)
   const dismissAlert = (id) => {
     setAlerts((prev) => prev.filter(a => a.id !== id));
   };
