@@ -2,7 +2,9 @@
 
 **Cyfrowy bliźniak akcji ratunkowej.** Innowacyjny system dowodzenia łączący wizualizację 3D budynku z telemetrią w czasie rzeczywistym. Daje dowódcy pełny wgląd w sytuację: od dokładnej pozycji strażaków na piętrach, przez parametry życiowe, aż po natychmiastowe alerty o zagrożeniu życia.
 
-[Zobacz specyfikację cyfrowego nieśmiertelnika](docs/cyfrowy_niesmiertelnik.md)
+[Dokumentacja Cyfrowego Nieśmiertelnika](docs/cyfrowy_niesmiertelnik.md)
+[Dokumentacja Beacona](docs/beacon_UWB.md)
+[Dokumentacja Bramki NIB](docs/Bramka_NIB.md)
 
 ## 🚀 Główne Funkcjonalności
 
