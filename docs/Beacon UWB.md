@@ -1,7 +1,7 @@
 ## 1. Opis Ogólny i schemat blokowy
 Beacon pełni funkcję stacjonarnego węzła referencyjnego (Anchor) w systemie lokalizacji. W przeciwieństwie do nasobnego Taga, priorytetem konstrukcyjnym jest tutaj **stabilność montażu**, **zasięg radiowy** (High-Power LoRa) oraz **ekstremalny czas pracy** na zasilaniu bateryjnym. Urządzenie zaprojektowano jako węzeł infrastruktury "Drop & Forget".
 
-[schemat blokowy beacona](beacon.jpg)
+![schemat blokowy beacona](beacon.png)
 
 ## 2. Lista Materiałowa (BOM)
 
