@@ -1,10 +1,11 @@
-import React, { useRef, useEffect, useState } from "react";
+import React, { useRef, useEffect, useState, useMemo } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "./styles.css";
 
-import Map3D from "./Map3D";
+import Map3D from "./Map3D"; // Upewnij się, że masz ten plik
 
+// --- KONFIGURACJA GPS ---
 const GPS_ORIGIN = { lat: 52.2297, lon: 21.0122 };
 const SCALE_LAT = 111320; 
 const SCALE_LON = 71695;  
@@ -22,6 +23,55 @@ function localToGPS(x, y) {
   ];
 }
 
+/**
+ * Generuje kolory dla zespołów na podstawie ich nazwy (Hash).
+ * Gwarantuje stały kolor dla danej nazwy zespołu.
+ * RIT zawsze Czerwony. Reszta unika czerwieni.
+ */
+function generateTeamColors(firefightersData) {
+  const colorMap = {};
+
+  Object.values(firefightersData).forEach(data => {
+    // Pobieramy nazwę zespołu (zabezpieczenie przed brakiem danych)
+    const teamName = data.firefighter.team || data.firefighter.rota || "Brak Zespołu";
+    
+    // Jeśli kolor już jest przypisany, pomijamy
+    if (colorMap[teamName]) return;
+
+    // 1. ZASADA RIT: Zawsze Czerwony
+    if (teamName.toUpperCase().includes("RIT")) {
+      colorMap[teamName] = "#FF0000";
+    } 
+    // 2. RESZTA: Kolor z Hasha nazwy
+    else {
+      let hash = 0;
+      for (let i = 0; i < teamName.length; i++) {
+        hash = teamName.charCodeAt(i) + ((hash << 5) - hash);
+      }
+      
+      // Wyciągamy Hue (odcień) z zakresu 0-360
+      let hue = Math.abs(hash % 360);
+
+      // ZABEZPIECZENIE: Unikamy czerwieni (zakresy 0-20 i 340-360)
+      // Jeśli wylosowało czerwień, przesuwamy o 60 stopni (na żółty/fiolet)
+      if (hue < 20 || hue > 340) {
+        hue = (hue + 60) % 360;
+      }
+
+      // Opcjonalnie: Unikamy też czystego żółtego (45-60), żeby był czytelny na jasnej mapie
+      if (hue > 45 && hue < 65) {
+         hue = (hue + 40) % 360; // Przesuń na zielony
+      }
+
+      // HSL: Saturation 85% (żywy), Lightness 50% (czytelny)
+      colorMap[teamName] = `hsl(${hue}, 85%, 50%)`;
+    }
+  });
+
+  return colorMap;
+}
+
+// --- DANE BUDYNKU ---
 const BUILDING_DATA = {
   dims: { w: 40, h: 25 }, 
   floors: {
@@ -57,9 +107,12 @@ export default function MapView({
 
   const [currentFloor, setCurrentFloor] = useState("0");
   const [mapType, setMapType] = useState("satellite");
-  
   const [viewMode, setViewMode] = useState("2D"); 
 
+  // Obliczamy kolory zespołów (useMemo, żeby nie liczyć przy każdym renderze mapy)
+  const teamColors = useMemo(() => generateTeamColors(firefighters), [firefighters]);
+
+  // --- 1. INICJALIZACJA MAPY ---
   useEffect(() => {
     if (!mapRef.current) {
       const center = localToGPS(20, 12.5);
@@ -86,6 +139,7 @@ export default function MapView({
     };
   }, []);
 
+  // --- 2. ZMIANA WARSTWY TŁA ---
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -102,9 +156,9 @@ export default function MapView({
     tileLayerRef.current = newTileLayer;
     
     document.getElementById('map').style.backgroundColor = mapType === 'standard' ? '#ddd' : '#111';
-
   }, [mapType]); 
 
+  // --- 3. BUDYNEK (KOLORY ZALEŻNE OD TŁA) ---
   useEffect(() => {
     if (!buildingLayerRef.current) return;
 
@@ -156,6 +210,7 @@ export default function MapView({
 
   }, [currentFloor, mapType]); 
 
+  // --- 4. RYSOWANIE STRAŻAKÓW (Z KOLORAMI ZESPOŁÓW) ---
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -168,25 +223,38 @@ export default function MapView({
       const latLng = pos.gps ? [pos.gps.lat, pos.gps.lon] : localToGPS(pos.x, pos.y);
       const key = ff.id;
 
+      const teamName = ff.team || ff.rota || "Brak Zespołu";
+      const assignedColor = teamColors[teamName] || "#ffffff";
+      const icon = getFirefighterIcon(data, assignedColor);
+
       if (!markers[key]) {
-        const marker = L.marker(latLng, { icon: getFirefighterIcon(data) });
-        marker.bindPopup(`<b>${ff.name}</b>`);
+        // TWORZENIE NOWEGO MARKERA
+        const marker = L.marker(latLng, { icon: icon });
+        marker.bindPopup(`<b>${ff.name}</b><br>Zespół: ${teamName}`);
         marker.on("click", () => setSelectedId && setSelectedId(ff.id));
         marker.addTo(map); 
         markers[key] = marker;
       } else {
+        // AKTUALIZACJA ISTNIEJĄCEGO
         markers[key].setLatLng(latLng);
-        markers[key].setIcon(getFirefighterIcon(data));
+        markers[key].setIcon(icon);
+        
+        // --- TU BYŁ BŁĄD (użyto 'marker' zamiast 'markers[key]') ---
+        markers[key].setPopupContent(`<b>${ff.name}</b><br>Zespół: ${teamName}`);
       }
 
+      // Zarządzanie widocznością (piętra)
       if (isOnCurrentFloor) {
-        markers[key].setOpacity(1); markers[key].setZIndexOffset(1000); 
+        markers[key].setOpacity(1); 
+        markers[key].setZIndexOffset(1000); 
       } else {
-        markers[key].setOpacity(0.3); markers[key].setZIndexOffset(0);
+        markers[key].setOpacity(0.3); 
+        markers[key].setZIndexOffset(0);
       }
     });
-  }, [firefighters, setSelectedId, currentFloor]);
+  }, [firefighters, setSelectedId, currentFloor, teamColors]);
 
+  // --- 5. RYSOWANIE BEACONÓW ---
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -299,24 +367,28 @@ export default function MapView({
   );
 }
 
-function getFirefighterIcon(data) {
-    const vitals = data.vitals || {};
+// --- FUNKCJE IKON ---
+
+/**
+ * Generuje ikonę strażaka z dynamicznym kolorem zespołu.
+ */
+function getFirefighterIcon(data, teamColor) {
     const heading = data.heading_deg || 0;
-    const stress = vitals.stress_level || "unknown";
-    const stressColors = { low: "#2ecc71", moderate: "#f1c40f", high: "#e67e22", critical: "#e74c3c", unknown: "#95a5a6" };
-    const color = stressColors[stress];
     const nameLabel = data.firefighter.name.split(" ").pop(); 
   
+    // Używamy teamColor jako głównego koloru
     return L.divIcon({
       className: "ff-marker-container", 
       html: `
-        <div class="ff-circle" style="background-color: ${color}; box-shadow: 0 0 10px ${color}">
-          <span class="ff-icon">👨‍🚒</span>
+        <div class="ff-circle" style="background-color: ${teamColor}; box-shadow: 0 0 12px ${teamColor}; border: 2px solid white;">
+          <span class="ff-icon" style="color: white; font-size: 16px; text-shadow: 0 1px 2px black;">👨‍🚒</span>
         </div>
         <div class="ff-direction-wrapper" style="transform: rotate(${heading}deg)">
-          <div class="ff-arrow-tip" style="border-bottom-color: ${color}"></div>
+          <div class="ff-arrow-tip" style="border-bottom-color: ${teamColor}"></div>
         </div>
-        <div class="ff-label">${nameLabel}</div>
+        <div class="ff-label" style="background-color: rgba(0,0,0,0.8); color: #fff; padding: 2px 5px; border-radius: 4px; border: 1px solid ${teamColor}; font-weight: bold;">
+          ${nameLabel}
+        </div>
       `,
       iconSize: [46, 46], iconAnchor: [23, 23],
     });

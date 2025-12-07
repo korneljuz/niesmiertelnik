@@ -14,22 +14,62 @@ const FLOOR_COLORS = {
   "2": "#bdc3c7"
 };
 
-const Firefighter3D = ({ data, isSelected, onClick }) => {
-  const { position, firefighter, vitals } = data;
+/**
+ * Logika generowania kolorów (identyczna jak w MapView.js)
+ */
+function generateTeamColors(firefightersData) {
+  const colorMap = {};
+
+  Object.values(firefightersData).forEach(data => {
+    const teamName = data.firefighter.team || data.firefighter.rota || "Brak Zespołu";
+    
+    if (colorMap[teamName]) return;
+
+    // 1. RIT = Zawsze Czerwony
+    if (teamName.toUpperCase().includes("RIT")) {
+      colorMap[teamName] = "#FF0000";
+    } 
+    // 2. Reszta = Hash z nazwy
+    else {
+      let hash = 0;
+      for (let i = 0; i < teamName.length; i++) {
+        hash = teamName.charCodeAt(i) + ((hash << 5) - hash);
+      }
+      
+      let hue = Math.abs(hash % 360);
+
+      // Unikamy czerwieni (RIT) i żółci (słaba widoczność)
+      if (hue < 20 || hue > 340) hue = (hue + 60) % 360;
+      if (hue > 45 && hue < 65) hue = (hue + 40) % 360;
+
+      colorMap[teamName] = `hsl(${hue}, 85%, 50%)`;
+    }
+  });
+
+  return colorMap;
+}
+
+// --- KOMPONENT STRAŻAKA (FASOLKA) ---
+const Firefighter3D = ({ data, isSelected, onClick, teamColor }) => {
+  const { position, firefighter } = data;
   
+  // Przeliczenie współrzędnych
   const x = position.x - (BUILDING_W / 2);
   const z = position.y - (BUILDING_D / 2);
   const y = (position.floor * FLOOR_HEIGHT) + 1;
 
-  const color = vitals.stress_level === "critical" ? "#ff4d4d" : "#37f58c";
+  // Priorytet kolorów: Zaznaczony > Kolor Zespołu
+  const finalColor = isSelected ? "#3498db" : teamColor;
 
   return (
     <group position={[x, y, z]} onClick={(e) => { e.stopPropagation(); onClick(firefighter.id); }}>
+      {/* Ciało strażaka */}
       <mesh position={[0, 1, 0]}>
         <capsuleGeometry args={[0.4, 1, 4, 8]} />
-        <meshStandardMaterial color={isSelected ? "#3498db" : color} />
+        <meshStandardMaterial color={finalColor} roughness={0.3} />
       </mesh>
 
+      {/* Etykieta nad głową */}
       <Html position={[0, 2.5, 0]} center distanceFactor={15}>
         <div style={{
           background: "rgba(0,0,0,0.8)", 
@@ -38,9 +78,13 @@ const Firefighter3D = ({ data, isSelected, onClick }) => {
           color: "white", 
           fontSize: "12px",
           whiteSpace: "nowrap",
-          border: isSelected ? "1px solid #3498db" : "none"
+          border: isSelected ? "1px solid #3498db" : `1px solid ${finalColor}`,
+          fontFamily: "Arial, sans-serif"
         }}>
           {firefighter.name}
+          <div style={{fontSize: '9px', color: '#ccc', textAlign: 'center'}}>
+            {firefighter.team || "Brak Zespołu"}
+          </div>
         </div>
       </Html>
     </group>
@@ -77,6 +121,9 @@ const Floor3D = ({ level, color }) => {
 export default function Map3D({ firefighters, selectedId, setSelectedId }) {
   const floors = [-1, 0, 1, 2];
 
+  // Wyliczamy kolory zespołów raz (podobnie jak w MapView)
+  const teamColors = useMemo(() => generateTeamColors(firefighters), [firefighters]);
+
   return (
     <div style={{ width: "100%", height: "100%", background: "#111" }}>
       <Canvas camera={{ position: [30, 20, 30], fov: 50 }}>
@@ -93,19 +140,27 @@ export default function Map3D({ firefighters, selectedId, setSelectedId }) {
           <Floor3D key={f} level={f} color={FLOOR_COLORS[f] || "#555"} />
         ))}
 
+        {/* Klatka schodowa (Wireframe) */}
         <mesh position={[35 - (BUILDING_W/2), 5, 20 - (BUILDING_D/2)]}>
             <boxGeometry args={[4, FLOOR_HEIGHT * 4, 4]} />
             <meshStandardMaterial color="yellow" transparent opacity={0.2} wireframe />
         </mesh>
 
-        {Object.values(firefighters).map(data => (
-          <Firefighter3D 
-            key={data.firefighter.id} 
-            data={data} 
-            isSelected={data.firefighter.id === selectedId}
-            onClick={setSelectedId}
-          />
-        ))}
+        {/* Renderowanie strażaków */}
+        {Object.values(firefighters).map(data => {
+          const teamName = data.firefighter.team || data.firefighter.rota || "Brak Zespołu";
+          const assignedColor = teamColors[teamName] || "#ffffff";
+
+          return (
+            <Firefighter3D 
+              key={data.firefighter.id} 
+              data={data} 
+              teamColor={assignedColor} // Przekazujemy kolor zespołu
+              isSelected={data.firefighter.id === selectedId}
+              onClick={setSelectedId}
+            />
+          );
+        })}
 
         <Grid position={[0, -4.1, 0]} args={[100, 100]} cellColor="#333" sectionColor="#555" />
       </Canvas>
