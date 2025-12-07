@@ -4,8 +4,7 @@ import FirefighterDetail from "./FirefighterPanel/FirefighterDetail";
 import BeaconCard from "./BeaconCard/BeaconCard"; 
 import BeaconDetail from "./BeaconDetail/BeaconDetail";
 import AlertCard from "./AlertsPanel/AlertCard"; 
-import { IoSearchOutline, IoTimeOutline, IoWarningOutline } from "react-icons/io5"; // Dodatkowe ikony
-import "../styles.css";
+import { IoSearchOutline, IoTimeOutline, IoWarningOutline } from "react-icons/io5";
 
 export default function InfoPanel({
   firefighters,
