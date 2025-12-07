@@ -2,7 +2,7 @@
 
 ---
 ## Schemat blokowy 
-![[diagram-export-6.12.2025-20_47_15.png]]
+![schemat blokowy niesmiertelnika](niesmiertelnik.jpg)
 
 ## 2. Lista materiałów
 
