@@ -43,8 +43,9 @@ Uruchom serwer (domyślnie port 8000):
 
 ```bash
 python server.py
-Serwer rozpocznie nasłuchiwanie danych i wystawi endpoint WebSocket.
 ```
+
+Serwer rozpocznie nasłuchiwanie danych i wystawi endpoint WebSocket.
 
 ### 2. Uruchomienie Frontendu
 
@@ -80,7 +81,11 @@ Aplikacja będzie dostępna pod adresem: http://localhost:5173 (lub podobnym wsk
     │   │   ├── FirefighterCard.js   # Karta na liście (mini dashboard)
     │   │   └── FirefighterDetail.js # Pełny widok szczegółowy
     │   └── AlertsPanel/
-    │       └── AlertCard.js         # Komponent pojedynczego alertu
+    │   |   └── AlertCard.js         # Komponent pojedynczego alertu
+    |   ── BeaconCard/
+    │   |   └── BeaconCard.js         # Komponent pojedynczego alertu
+    |   ── BeaconDetail/
+    │       └── BeaconDetail.js         # Komponent pojedynczego alertu
     ├── App.jsx             # Główny stan aplikacji, buforowanie alertów
     └── styles.css          # Globalne style, Dark Mode, Animacje
 ```
