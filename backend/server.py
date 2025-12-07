@@ -33,7 +33,7 @@ Base.metadata.create_all(bind=engine)
 # --- KONFIGURACJA SERWERA ---
 API_URL = "wss://niesmiertelnik.replit.app/ws"
 
-sio = socketio.AsyncServer(async_mode="asgi", cors_allowed_origins=["http://localhost:5174"])
+sio = socketio.AsyncServer(async_mode="asgi", cors_allowed_origins=["http://localhost:5173"])
 app = FastAPI()
 app.mount("/", socketio.ASGIApp(sio))
 
