@@ -3,14 +3,12 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "./styles.css";
 
-// Importujemy komponent 3D (upewnij się, że plik Map3D.js istnieje w tym samym folderze)
 import Map3D from "./Map3D";
 
 const GPS_ORIGIN = { lat: 52.2297, lon: 21.0122 };
 const SCALE_LAT = 111320; 
 const SCALE_LON = 71695;  
 
-// Adresy kafelków (Map Tiles)
 const TILES = {
   satellite: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
   standard: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
@@ -48,7 +46,7 @@ export default function MapView({
   firefighters, 
   beacons = [], 
   setSelectedId,
-  selectedId, // Potrzebne do podświetlania w 3D
+  selectedId,
   setSelectedBeaconId 
 }) {
   const mapRef = useRef(null);
@@ -60,10 +58,8 @@ export default function MapView({
   const [currentFloor, setCurrentFloor] = useState("0");
   const [mapType, setMapType] = useState("satellite");
   
-  // NOWY STAN: Tryb widoku (2D lub 3D)
   const [viewMode, setViewMode] = useState("2D"); 
 
-  // --- 1. INICJALIZACJA MAPY (LEAFLET) ---
   useEffect(() => {
     if (!mapRef.current) {
       const center = localToGPS(20, 12.5);
@@ -90,7 +86,6 @@ export default function MapView({
     };
   }, []);
 
-  // --- 2. ZMIANA PODKŁADU (2D) ---
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -110,7 +105,6 @@ export default function MapView({
 
   }, [mapType]); 
 
-  // --- 3. RYSOWANIE BUDYNKU (2D) ---
   useEffect(() => {
     if (!buildingLayerRef.current) return;
 
@@ -162,7 +156,6 @@ export default function MapView({
 
   }, [currentFloor, mapType]); 
 
-  // --- 4. STRAŻACY (2D) ---
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -194,7 +187,6 @@ export default function MapView({
     });
   }, [firefighters, setSelectedId, currentFloor]);
 
-  // --- 5. BEACONY (2D) ---
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -227,14 +219,12 @@ export default function MapView({
   return (
     <div className="map-wrapper">
       
-      {/* --- MAPA 2D (Leaflet) - widoczna tylko w trybie 2D --- */}
       <div 
         id="map" 
         className="map-half" 
         style={{ display: viewMode === '2D' ? 'block' : 'none' }}
       ></div>
 
-      {/* --- MAPA 3D (Three.js) - widoczna tylko w trybie 3D --- */}
       {viewMode === '3D' && (
         <div style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0, zIndex: 1 }}>
            <Map3D 
@@ -245,10 +235,8 @@ export default function MapView({
         </div>
       )}
       
-      {/* UI KONTROLI (Prawy górny róg) */}
       <div className="map-controls">
         
-        {/* Przełącznik TRYBU WIDOKU (Nowość) */}
         <div className="control-group">
             <button 
               className={`map-btn ${viewMode === '2D' ? 'active' : ''}`}
@@ -266,10 +254,8 @@ export default function MapView({
 
         <div className="control-divider"></div>
 
-        {/* --- OPCJE TYLKO DLA 2D --- */}
         {viewMode === '2D' && (
           <>
-            {/* Przełącznik Mapy (Satelita/Jasna/Ciemna) */}
             <div className="control-group">
                 <button 
                   className={`map-btn ${mapType === 'satellite' ? 'active' : ''}`}
@@ -294,7 +280,6 @@ export default function MapView({
 
             <div className="control-divider"></div>
 
-            {/* Wybór Piętra */}
             <div className="control-group floor-group">
               <div className="floor-label">PIĘTRO</div>
               {Object.keys(BUILDING_DATA.floors).sort((a,b) => b-a).map(floor => (
@@ -314,7 +299,6 @@ export default function MapView({
   );
 }
 
-// --- IKONY BEZ ZMIAN ---
 function getFirefighterIcon(data) {
     const vitals = data.vitals || {};
     const heading = data.heading_deg || 0;
